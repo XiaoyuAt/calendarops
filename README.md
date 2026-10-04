@@ -1,12 +1,12 @@
 # CalendarOps
 
-> **A personal agent with its own inbox that negotiates meeting times over email — and knows what it should NOT do.**
+> **A personal agent with its own inbox that schedules your meetings end-to-end — research, propose, negotiate, book, brief you.**
 
 Built at [Neon Build Personal Agents Hack](https://build-personal-agents.com) · SF · Oct 4, 2026
 
 ## Why
 
-Scheduling negotiation eats 2–3 hours of every founder's week — proposal emails, counterproposals, reschedules, timezones. CalendarOps owns that entire loop. You forward it a meeting request; it researches the counterparty, proposes slots, negotiates back-and-forth by email from **its own address** (`calendarops@agentmail.to`), and writes a **tentative** hold. The only decision left for you is the final yes.
+Scheduling eats 2–3 hours of every founder's week — proposal emails, counterproposals, reschedules, timezone math. CalendarOps closes the entire loop **hands-free**. You forward it one meeting request; from its own address (`calendarops@agentmail.to`) it researches the counterparty, proposes slots, adapts to counters, books the meeting — then drops a **meeting-prep brief in your inbox**: who they are, how to play it, how many rounds it took. You did nothing.
 
 The author runs a CRO operating across US/China timezones — this is the agent he needs every Monday, not a toy demo.
 
@@ -32,31 +32,23 @@ The author runs a CRO operating across US/China timezones — this is the agent 
 
 The entire product is 5 verbs: `create → propose → poll → [gates] → settle | escalate`.
 
-## Capability boundary — the point of this project
+## The loop, fully automated
 
-An agent is trustworthy when it can articulate what it refuses to do.
+```
+forward one email ──▶ 🔍 research (Exa) ──▶ 📧 propose slots (conflict-checked)
+                        │                          │
+                        ▼                          ▼
+                  📋 prep brief ◀── 📅 book ◀── 🔁 counter? adapt & re-propose
+                  (your inbox)      (hold)        └─ money mentioned? → hands to you
+```
 
-**In scope:** propose/accept/counter meeting slots · conflict detection against existing holds · counterparty research for negotiation posture · tentative calendar holds.
-
-**Never (hard-coded refusals):**
-- ❌ Cancel meetings — negative externalities always escalate to the human
-- ❌ Cold outreach — only replies to threads a human initiated
-- ❌ Anything with money or contractual language — regex gate pauses the thread instantly
-- ❌ Phone/voice channels
-
-**Automatic escalation to human (tested in demo):**
-| Gate | Trigger |
-|------|---------|
-| Reschedule limit | counterparty changes slots ≥ 2× |
-| Loop expiry | no closure in 48h |
-| Money/contract language | `$`, `invoice`, `payment`, `contract`, `price`, `quote`, `NDA`… in any reply |
-| Multi-party sprawl | > 3 distinct participants |
+**Full autonomy, one exception:** if the thread turns to money or contracts (`$`, `invoice`, `payment`, `quote`, `NDA`…), CalendarOps hands it to you — scheduling is its job, deals are yours. Everything else — research, proposals, counters, reschedules (up to 2×), booking, briefing — runs with zero human input.
 
 ## Run
 
 ```bash
 npm install
-npm run demo          # full simulation: happy path + both escalation gates. Zero infra needed.
+npm run demo          # full simulation: autonomous loop + prep brief + guardrail. Zero infra needed.
 npm run demo:live     # real inbox: set .env (AGENTMAIL_*, REAL_TO=your email)
 npm run mcp           # start CalendarOps as an MCP server (stdio)
 ```

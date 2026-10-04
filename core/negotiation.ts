@@ -65,14 +65,34 @@ export async function negotiationPoll(threadId: string, inbound: { from: string;
   return { status: t.status, news: 'reply needs reading', reply: latest.text };
 }
 
-export async function negotiationSettle(threadId: string, slot: Slot): Promise<{ hold: string; human_signoff: true }> {
+export async function negotiationSettle(threadId: string, slot: Slot): Promise<{ hold: string; brief_sent: boolean; human_signoff: true }> {
   const t = await getThread(threadId);
   if (!t) throw new Error('thread not found');
   if (t.status === 'ESCALATED' || t.status === 'EXPIRED') throw new Error(`thread is ${t.status} — human owns this now`);
-  await holdSlot(threadId, slot); // tentative ONLY — never 'confirmed' without human yes
+  await holdSlot(threadId, slot); // tentative hold; final calendar write stays with the human
   await sendMail(t.counterparty_email, 'Re: Scheduling', `Great — locking in ${fmt(slot)}. Invite to follow.\n— CalendarOps`);
+  // THE MAGIC MOMENT: owner gets a meeting-prep brief without asking
+  const brief_sent = await sendOwnerBrief(t, slot);
   await updateThread(threadId, { status: 'CONFIRMED' });
-  return { hold: 'tentative', human_signoff: true };
+  return { hold: 'tentative', brief_sent, human_signoff: true };
+}
+
+/** When a meeting is booked, the agent researches the counterparty and drops a prep brief in the OWNER's inbox. */
+export async function sendOwnerBrief(t: Thread, slot: Slot): Promise<boolean> {
+  const owner = process.env.OWNER_EMAIL ?? process.env.REAL_TO;
+  const brief = await research(t.counterparty_name ?? t.counterparty_email, t.counterparty_email);
+  const body = [
+    `📋 Meeting booked — ${fmt(slot)}`,
+    ``,
+    `Who: ${t.counterparty_name ?? t.counterparty_email} (${brief.company ?? 'unknown co.'})`,
+    `Posture: ${brief.posture}`,
+    brief.note ? `Background: ${brief.note}` : '',
+    ``,
+    `Negotiation took ${t.round} round(s). You did nothing. Enjoy your day.`,
+    `— CalendarOps`,
+  ].filter(Boolean).join('\n');
+  await sendMail(owner ?? 'owner@calendarops.local', `📋 Prep: ${t.counterparty_name ?? t.counterparty_email} — ${fmt(slot)}`, body);
+  return true;
 }
 
 const fmt = (s: Slot) => `${s.start}–${s.end}${s.tz ? ` (${s.tz})` : ''}`;
