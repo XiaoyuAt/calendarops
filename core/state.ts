@@ -17,7 +17,8 @@ export function nextStatus(t: Thread, event: 'propose' | 'accept' | 'counter' | 
 /** All escalation gates live here — one function, easy to audit, demo-able. */
 export interface GateResult { escalate: boolean; reason?: string }
 
-const MONEY_RE = /\$\s?\d|\bUSD\b|\bEUR\b|¥|£|invoice|payment|contract|price|quote|deposit|NDA/i;
+// Word boundaries matter: "NDA" as a bare substring matches "Monday" and "calendar".
+const MONEY_RE = /\$\s?\d|¥|£|\b(?:USD|EUR|invoice|payment|contract|pricing?|quote|deposit|NDA|term sheet|valuation|equity|funding|budget)\b/i;
 
 export function escalationGates(t: Thread, bodyText: string, lastActivityAt: Date, now = new Date()): GateResult {
   if (t.round >= MAX_ROUNDS) return { escalate: true, reason: `counterparty changed ${t.round}x — over reschedule limit` };
