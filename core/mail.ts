@@ -26,14 +26,29 @@ export interface InboundMessage { id: string; from: string; subject: string; tex
 
 export async function pollInbox(): Promise<InboundMessage[]> {
   if (LIVE && env.AGENTMAIL_API_KEY && env.AGENTMAIL_INBOX_ID) {
-    const res = await fetch(`${BASE}/inboxes/${env.AGENTMAIL_INBOX_ID}/messages?limit=10`, {
-      headers: { 'Authorization': `Bearer ${env.AGENTMAIL_API_KEY}` },
-    });
+    const auth = { 'Authorization': `Bearer ${env.AGENTMAIL_API_KEY}` };
+    const res = await fetch(`${BASE}/inboxes/${env.AGENTMAIL_INBOX_ID}/messages?limit=10`, { headers: auth });
     if (!res.ok) throw new Error(`AgentMail poll failed: ${res.status}`);
     const data = await res.json() as any;
-    return (data.messages ?? data ?? []).map((m: any) => ({
-      id: m.id, from: m.from?.[0]?.email ?? m.from, subject: m.subject ?? '',
-      text: m.text ?? m.body ?? '', received_at: m.created_at ?? new Date().toISOString(),
+    // AgentMail returns newest-first; the core assumes chronological (latest = last)
+    const msgs = (data.messages ?? data ?? [])
+      .slice()
+      .sort((a: any, b: any) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+    return await Promise.all(msgs.map(async (m: any) => {
+      // the list endpoint returns bodies as null — fetch each message's text individually
+      let text = m.text ?? m.body ?? '';
+      const mid = m.message_id ?? m.id;
+      if (!text && mid) {
+        const detail = await fetch(`${BASE}/inboxes/${env.AGENTMAIL_INBOX_ID}/messages/${encodeURIComponent(mid)}`, { headers: auth });
+        if (detail.ok) {
+          const d = await detail.json() as any;
+          text = d.text ?? d.body ?? '';
+        }
+      }
+      return {
+        id: mid, from: m.from?.[0]?.email ?? m.from, subject: m.subject ?? '',
+        text, received_at: m.created_at ?? new Date().toISOString(),
+      };
     }));
   }
   return []; // mock: inbound driven by demo script, not real polling
