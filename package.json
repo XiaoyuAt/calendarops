@@ -1,0 +1,21 @@
+{
+  "name": "calendarops",
+  "version": "0.1.0",
+  "description": "A personal agent with its own inbox that negotiates meeting times over email — and knows what it should NOT do.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "demo": "tsx demo/simulate.ts",
+    "demo:live": "LIVE=1 tsx demo/simulate.ts",
+    "mcp": "tsx mcp/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
