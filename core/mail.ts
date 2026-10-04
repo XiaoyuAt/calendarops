@@ -1,5 +1,5 @@
 // AgentMail client — real API in LIVE mode, deterministic mock otherwise.
-// AgentMail API: https://docs.agentmail.to (REST: /v0/inboxes/{inbox_id}/messages)
+// AgentMail API: https://docs.agentmail.to (REST: POST /v0/inboxes/{inbox_id}/messages/send)
 import { LIVE, env } from './config.js';
 
 const BASE = 'https://api.agentmail.to/v0';
@@ -8,13 +8,14 @@ export interface SentMessage { id: string; to: string; subject: string; thread_i
 
 export async function sendMail(to: string, subject: string, text: string): Promise<SentMessage> {
   if (LIVE && env.AGENTMAIL_API_KEY && env.AGENTMAIL_INBOX_ID) {
-    const res = await fetch(`${BASE}/inboxes/${env.AGENTMAIL_INBOX_ID}/messages`, {
+    const res = await fetch(`${BASE}/inboxes/${env.AGENTMAIL_INBOX_ID}/messages/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.AGENTMAIL_API_KEY}` },
-      body: JSON.stringify({ to: [{ email: to }], subject, text }),
+      body: JSON.stringify({ to, subject, text }),
     });
     if (!res.ok) throw new Error(`AgentMail send failed: ${res.status} ${await res.text()}`);
-    return await res.json() as SentMessage;
+    const data = await res.json() as { message_id?: string; thread_id?: string };
+    return { id: data.message_id ?? `sent_${Date.now()}`, to, subject, thread_id: data.thread_id };
   }
   // mock: log only
   console.log(`📧 [mock] → ${to}\n   Subject: ${subject}\n   ${text.split('\n').map(l => '   ' + l).join('\n')}`);
